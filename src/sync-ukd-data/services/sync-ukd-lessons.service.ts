@@ -33,7 +33,7 @@ export class SyncUkdLessonsService {
     const results = [];
 
     for (const {lessonName} of missingLessons) {
-    //   results.push(await this.lessonsService.create({})
+      // results.push(await this.lessonsService.create({})
     }
 
     return results;

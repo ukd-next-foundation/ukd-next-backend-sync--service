@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { config } from '@sync-ukd-service/src/configs';
 import { SyncUkdDataModule } from './sync-ukd-data/sync-ukd-data.module';
 import { DecanatPlusPlusModule } from './decanat-plus-plus/decanat-plus-plus.module';
+import { DepartmentsModule } from './departments/departments.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { DecanatPlusPlusModule } from './decanat-plus-plus/decanat-plus-plus.mod
     ScheduleModule.forRoot(),
     SyncUkdDataModule,
     DecanatPlusPlusModule,
+    DepartmentsModule,
   ],
 })
 export class AppModule {}
