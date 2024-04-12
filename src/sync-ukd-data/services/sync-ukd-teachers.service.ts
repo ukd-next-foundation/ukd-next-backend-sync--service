@@ -1,8 +1,8 @@
 import { AuthProvider, UserRole } from '@app/src/common/enums';
 import { UserEntity } from '@app/src/core/users/entities/user.entity';
 import { Injectable, Logger } from '@nestjs/common';
-import { hashString, replaceCyrillicWithLatin } from '@sync-ukd-service/common/functions';
-import { UkdScheduleApiService } from '@sync-ukd-service/src/ukd-schedule-api';
+import { findMissingValues, replaceCyrillicWithLatin } from '@sync-ukd-service/common/functions';
+import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
 import { UsersService } from '@sync-ukd-service/src/users/users.service';
 
 @Injectable()
@@ -10,7 +10,7 @@ export class SyncUkdTeachersService {
   private readonly logger = new Logger(SyncUkdTeachersService.name);
 
   constructor(
-    private readonly ukdScheduleApiService: UkdScheduleApiService,
+    private readonly decanatPlusPlusService: DecanatPlusPlusService,
     private readonly usersService: UsersService,
   ) {}
 
@@ -33,13 +33,13 @@ export class SyncUkdTeachersService {
   private async process() {
     const [internalTeachers, externalTeachers] = await Promise.all([
       this.usersService.findAll({ role: UserRole.Teacher }).then((users) => users.map((user) => user.fullname)),
-      this.ukdScheduleApiService.getTeachers(),
+      this.decanatPlusPlusService
+        .getTeachers()
+        .then((teachers) => teachers.map(({ fullname }) => fullname.replaceAll('`', '’'))),
     ]);
 
     const result: UserEntity[] = [];
-    const missingTeachers = externalTeachers
-      .map((t) => t.replaceAll('`', '’'))
-      .filter((t) => !internalTeachers.includes(t));
+    const missingTeachers = findMissingValues(externalTeachers, internalTeachers);
 
     for (const fullname of missingTeachers) {
       const email = `${replaceCyrillicWithLatin(fullname).replaceAll(' ', '.')}@ukd.edu.ua`;

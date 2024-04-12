@@ -21,7 +21,7 @@ export class SchedulesService extends SchedulesController {
 
   async create(payload: CreateScheduleDto) {
     const request = await this.axios.post<ScheduleEntity>('', payload);
-    return request.data;
+    return request.data as any ;
   }
 
   async findAll(params: FindScheduleDto) {

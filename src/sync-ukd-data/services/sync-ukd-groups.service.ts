@@ -1,13 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { findMissingValues } from '@sync-ukd-service/common/functions';
+import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
 import { GroupsService } from '@sync-ukd-service/src/groups/groups.service';
-import { UkdScheduleApiService } from '@sync-ukd-service/src/ukd-schedule-api';
 
 @Injectable()
 export class SyncUkdGroupsService {
   private readonly logger = new Logger(SyncUkdGroupsService.name);
 
   constructor(
-    private readonly ukdScheduleApiService: UkdScheduleApiService,
+    private readonly decanatPlusPlusService: DecanatPlusPlusService,
     private readonly groupsService: GroupsService,
   ) {}
 
@@ -27,11 +28,11 @@ export class SyncUkdGroupsService {
 
   private async process() {
     const [externalGroups, internalGroups] = await Promise.all([
-      this.ukdScheduleApiService.getGroups().then((groups) => Array.from(new Set(groups))),
+      this.decanatPlusPlusService.getGroups(),
       this.groupsService.findAll().then((groups) => groups.map((group) => group.name)),
     ]);
 
-    const missingGroups = externalGroups.filter((name) => !internalGroups.includes(name));
+    const missingGroups = findMissingValues(externalGroups, internalGroups);
 
     return this.groupsService.create(missingGroups.map((name) => ({ name })));
   }

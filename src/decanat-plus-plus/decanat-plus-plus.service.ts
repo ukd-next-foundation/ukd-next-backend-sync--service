@@ -2,8 +2,8 @@ import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { axiosErrorHandler } from '@sync-ukd-service/common/handlers';
 import { ConvertWin1254 } from '@sync-ukd-service/common/utils';
-import allLessons from './data/all-lessons.json';
-import { IClassroomType } from './interfaces';
+import ALL_LESSONS from './data/all-lessons.json';
+import { IClassroomType, IRozkladItem } from './interfaces';
 import {
   ExportClassroomTypesType,
   ExportClassroomsType,
@@ -22,7 +22,14 @@ export class DecanatPlusPlusService {
   }
 
   getLessons() {
-    return allLessons;
+    return ALL_LESSONS.map((el) => {
+      const departmentName = el.departmentName.charAt(0).toUpperCase() + el.departmentName.slice(1);
+
+      return {
+        lessonName: this.clearText(el.lessonName),
+        departmentName: departmentName.length < 2 ? null : this.clearText(departmentName),
+      };
+    });
   }
 
   async getGroups(): Promise<string[]> {
@@ -32,7 +39,7 @@ export class DecanatPlusPlusService {
     return response.data.psrozklad_export.departments
       .map((d) => d.objects)
       .flat()
-      .map((g) => g.name);
+      .map((g) => this.clearText(g.name));
   }
 
   async getTeachers() {
@@ -40,12 +47,14 @@ export class DecanatPlusPlusService {
     const response = await this.axios.get<ExportTeachersType>('/timetable_export.cgi', { params });
 
     return response.data.psrozklad_export.departments
-      .map((departmen) =>
-        departmen.objects.map((teacher) => ({
-          fullname: `${teacher.P} ${teacher.I} ${teacher.B}`,
-          department: departmen.name,
-        })),
-      )
+      .map((departmen) => {
+        const departmentName = departmen.name.charAt(0).toUpperCase() + departmen.name.slice(1);
+
+        return departmen.objects.map((teacher) => ({
+          fullname: this.clearText(`${teacher.P} ${teacher.I} ${teacher.B}`),
+          department: departmentName.length < 2 ? null : this.clearText(departmentName),
+        }));
+      })
       .flat();
   }
 
@@ -56,7 +65,7 @@ export class DecanatPlusPlusService {
     return response.data.psrozklad_export.blocks
       .map((d) => d.objects)
       .flat()
-      .map((g) => g.name);
+      .map((g) => this.clearText(g.name));
   }
 
   async getClassroomsTypes(): Promise<IClassroomType[]> {
@@ -87,10 +96,16 @@ export class DecanatPlusPlusService {
       JSON.stringify(response.data).replaceAll('} {', '}, {').replaceAll('`', '’'),
     );
 
-    return data.psrozklad_export.roz_items.map((item) => ({
+    const result = data.psrozklad_export.roz_items.map((item) => ({
       ...item,
       date: item.date.split('.').reverse().join('-'),
     }));
+
+    return JSON.parse(this.clearText(JSON.stringify(result))) as IRozkladItem[];
+  }
+
+  private clearText(text: string) {
+    return text.replaceAll(`'`, '’').replaceAll('‘', '’');
   }
 
   private convertDateForPSRozklad(date: Date) {

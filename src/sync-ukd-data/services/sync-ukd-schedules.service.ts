@@ -1,4 +1,3 @@
-import { IUkdSchedule, UkdScheduleApiService } from '@sync-ukd-service/src/ukd-schedule-api';
 import { Injectable, Logger } from '@nestjs/common';
 import { UsersService } from '@sync-ukd-service/src/users/users.service';
 import { UserRole } from '@app/src/common/enums';
@@ -27,6 +26,9 @@ export class SyncUkdSchedulesService {
 
   async sync(from: Date, to: Date) {
     const data = await this.getDataFromMainBackend(from, to);
+    console.log(await this.decanatPlusPlusService.getClassroomsTypes())
+
+    return
 
     for (const currentGroup of data.groups) {
       const schedule = await this.decanatPlusPlusService.getSchedule(currentGroup.name, from, to);
@@ -53,8 +55,9 @@ export class SyncUkdSchedulesService {
     )[0];
 
     if (!teacher?.fullname) {
+      this.logger.error('Teacher not found');
       console.log(item);
-      throw new Error(`Teacher not found for ${item}`);
+      // throw new Error(`Teacher not found for ${item}`);
     }
 
     const lesson = data.lessons.filter(({ name }) => item.title.includes(name))[0];
@@ -74,7 +77,7 @@ export class SyncUkdSchedulesService {
     const result = {
       type: 'LECTURE',
       lessonId: lesson.id,
-      teacherId: teacher.id,
+      teacherId: teacher?.id ?? null,
       classroomId: classroom?.id ?? null,
       groupIds: [currentGroup.id, currentGroup.name],
       date: item.date,

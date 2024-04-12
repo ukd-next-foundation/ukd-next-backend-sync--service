@@ -16,7 +16,7 @@ export class SyncUkdDaemonService {
     private readonly syncUkdSchedulesService: SyncUkdSchedulesService,
   ) {}
 
-  // @Cron(CronExpression.EVERY_DAY_AT_7PM) 
+  // @Cron(CronExpression.EVERY_DAY_AT_7PM)
   async syncGroups() {
     this.syncUkdGroupsService.sync();
   }

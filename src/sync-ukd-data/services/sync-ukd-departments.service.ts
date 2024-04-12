@@ -1,39 +1,42 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { findMissingValues } from '@sync-ukd-service/common/functions';
 import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
-import { LessonsService } from '@sync-ukd-service/src/lessons/lessons.service';
+import { DepartmentsService } from '@sync-ukd-service/src/departments/departments.service';
 
 @Injectable()
-export class SyncUkdLessonsService {
-  private readonly logger = new Logger(SyncUkdLessonsService.name);
+export class SyncUkdDepartmentsService {
+  private readonly logger = new Logger(SyncUkdDepartmentsService.name);
 
   constructor(
     private readonly decanatPlusPlusService: DecanatPlusPlusService,
-    private readonly lessonsService: LessonsService,
+    private readonly departmentsService: DepartmentsService,
   ) {}
 
   async sync() {
-    this.logger.log('The process of synchronizing groups with UKD data has begun');
+    this.logger.log('The process of synchronizing departments with UKD data has begun');
 
     const result = await this.process();
 
     if (result.length) {
-      this.logger.warn(`Successfully synchronized ${result.length} groups such as: ${result.map((g) => g.name)}.`);
+      this.logger.warn(`Successfully synchronized ${result.length} departments such as: ${result.map((g) => g.name)}.`);
     } else {
-      this.logger.log('No new groups found to synchronize');
+      this.logger.log('No new departments found to synchronize');
     }
 
     return result;
   }
 
   private async process() {
-    const externalLessons = this.decanatPlusPlusService.getLessons();
-    const internalLessons = await this.lessonsService.findAll().then((lessons) => lessons.map((lesson) => lesson.name));
+    const externalDepartments = this.decanatPlusPlusService.getLessons().map((values) => values.departmentName);
+    const internalDepartments = await this.departmentsService
+      .findAll()
+      .then((departments) => departments.map((department) => department.name));
 
-    const missingLessons = externalLessons.filter(({ lessonName }) => !internalLessons.includes(lessonName));
     const results = [];
+    const missingDepartments = findMissingValues(externalDepartments, internalDepartments);
 
-    for (const {lessonName} of missingLessons) {
-      // results.push(await this.lessonsService.create({})
+    for (const name of missingDepartments) {
+      results.push(await this.departmentsService.create({ name }));
     }
 
     return results;
