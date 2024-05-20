@@ -1,8 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
-import { axiosErrorHandler } from '@sync-ukd-service/common/handlers';
 import { ConvertWin1254 } from '@sync-ukd-service/common/utils';
-import ALL_LESSONS from './data/all-lessons.json';
 import { IClassroomType, IRozkladItem } from './interfaces';
 import {
   ExportClassroomTypesType,
@@ -11,6 +9,7 @@ import {
   ExportRozkladType,
   ExportTeachersType,
 } from './types';
+import { errorInterceptor } from '@sync-ukd-service/common/interceptors';
 
 @Injectable()
 export class DecanatPlusPlusService {
@@ -18,18 +17,7 @@ export class DecanatPlusPlusService {
   private readonly axios = this.httpService.axiosRef;
 
   constructor(private readonly httpService: HttpService) {
-    httpService.axiosRef.interceptors.response.use((response) => response, axiosErrorHandler(this.logger));
-  }
-
-  getLessons() {
-    return ALL_LESSONS.map((el) => {
-      const departmentName = el.departmentName.charAt(0).toUpperCase() + el.departmentName.slice(1);
-
-      return {
-        lessonName: this.clearText(el.lessonName),
-        departmentName: departmentName.length < 2 ? null : this.clearText(departmentName),
-      };
-    });
+    errorInterceptor(this.axios.interceptors, this.logger);
   }
 
   async getGroups(): Promise<string[]> {
@@ -105,7 +93,7 @@ export class DecanatPlusPlusService {
   }
 
   private clearText(text: string) {
-    return text.replaceAll(`'`, '’').replaceAll('‘', '’');
+    return text.replaceAll(`'`, '’').replaceAll('‘', '’').replaceAll('`', '’');
   }
 
   private convertDateForPSRozklad(date: Date) {

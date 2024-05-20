@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { findMissingValues } from '@sync-ukd-service/common/functions';
 import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
-import { GroupsService } from '@sync-ukd-service/src/groups/groups.service';
+import { GroupsService } from '@sync-ukd-service/src/main-backend-modules/groups/groups.service';
 
 @Injectable()
 export class SyncUkdGroupsService {
@@ -18,9 +18,10 @@ export class SyncUkdGroupsService {
     const result = await this.process();
 
     if (result.length) {
-      this.logger.warn(`Successfully synchronized ${result.length} groups such as: ${result.map((g) => g.name)}.`);
+      const newGroups = result.map(({ name }) => name).join(', ');
+      this.logger.warn(`Successfully synchronized ${result.length} groups such as: ${newGroups}.`);
     } else {
-      this.logger.log('No new groups found to synchronize');
+      this.logger.log('No found new groups to synchronize');
     }
 
     return result;

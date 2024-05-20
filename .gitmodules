@@ -1,4 +1,4 @@
 [submodule "ukd-next--backend"]
 	path = ukd-next--backend
 	url = https://github.com/ukd-next-foundation/ukd-next--backend.git
-	branch = UNT-54
+	branch = main

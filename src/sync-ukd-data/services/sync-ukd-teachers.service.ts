@@ -1,9 +1,9 @@
 import { AuthProvider, UserRole } from '@app/src/common/enums';
 import { UserEntity } from '@app/src/core/users/entities/user.entity';
 import { Injectable, Logger } from '@nestjs/common';
-import { findMissingValues, replaceCyrillicWithLatin } from '@sync-ukd-service/common/functions';
+import { getFindFunction, replaceCyrillicWithLatin } from '@sync-ukd-service/common/functions';
 import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
-import { UsersService } from '@sync-ukd-service/src/users/users.service';
+import { UsersService } from '@sync-ukd-service/src/main-backend-modules/users/users.service';
 
 @Injectable()
 export class SyncUkdTeachersService {
@@ -17,37 +17,60 @@ export class SyncUkdTeachersService {
   async sync() {
     this.logger.log('The process of synchronizing teachers with UKD data has begun');
 
-    const result = await this.process();
+    const { created, updated } = await this.process();
 
-    if (result.length) {
-      this.logger.warn(
-        `Successfully synchronized ${result.length} teachers such as: ${result.map((t) => t.fullname)}.`,
-      );
-    } else {
-      this.logger.log('No new teachers found to synchronize');
-    }
+    const createdTeachers = JSON.stringify(created.map(({ fullname }) => fullname));
+    const updatedTeachers = JSON.stringify(updated.map(({ id, fullname }) => ({ id, fullname })));
 
-    return result;
+    this.logger.warn(
+      `Successfully created ${created.length} and updated ${updated.length} teachers created: "${createdTeachers}", updated: "${updatedTeachers}".`,
+    );
   }
 
-  private async process() {
-    const [internalTeachers, externalTeachers] = await Promise.all([
-      this.usersService.findAll({ role: UserRole.Teacher }).then((users) => users.map((user) => user.fullname)),
-      this.decanatPlusPlusService
-        .getTeachers()
-        .then((teachers) => teachers.map(({ fullname }) => fullname.replaceAll('`', '’'))),
+  private async process(): Promise<{ created: UserEntity[]; updated: UserEntity[] }> {
+    const [teachers, users] = await Promise.all([
+      this.decanatPlusPlusService.getTeachers(),
+      this.usersService.findAll(),
     ]);
 
-    const result: UserEntity[] = [];
-    const missingTeachers = findMissingValues(externalTeachers, internalTeachers);
+    const findTeacherFn = getFindFunction(users.map((user) => user.fullname));
+    const actions = { created: [], updated: [], plannedNewTeacher: [] };
 
-    for (const fullname of missingTeachers) {
-      const email = `${replaceCyrillicWithLatin(fullname).replaceAll(' ', '.')}@ukd.edu.ua`;
-      const authProvider = AuthProvider.Internal;
-      const roles = [UserRole.Teacher];
-      result.push(await this.usersService.create({ authProvider, fullname, email, roles }));
+    for (const teacher of teachers) {
+      const foundTeacher = findTeacherFn(teacher.fullname);
+
+      if (!foundTeacher) {
+        actions.plannedNewTeacher.push(this.createEmptyTeacher(teacher.fullname));
+        continue;
+      }
+
+      const user = users.find((user) => user.fullname === foundTeacher);
+
+      if (!user.roles.includes(UserRole.Teacher)) {
+        const newRoles = [...user.roles, UserRole.Teacher];
+
+        if (newRoles.includes(UserRole.Student)) {
+          const index = newRoles.indexOf(UserRole.Student);
+          if (index !== -1) newRoles.splice(index, 1);
+        }
+
+        await this.usersService.update(user.id, { roles: newRoles });
+        actions.updated.push({ ...user, roles: newRoles });
+      }
     }
 
-    return result;
+    actions.created = await this.usersService.create(actions.plannedNewTeacher);
+    delete actions.plannedNewTeacher;
+
+    return actions;
+  }
+
+  createEmptyTeacher(fullname: string) {
+    return {
+      email: `${replaceCyrillicWithLatin(fullname).replaceAll(' ', '.')}@ukd.edu.ua`,
+      authProvider: AuthProvider.Internal,
+      fullname: fullname,
+      roles: [UserRole.Teacher],
+    };
   }
 }

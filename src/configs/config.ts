@@ -3,8 +3,11 @@ export function config() {
 
   return {
     apiUrl: ENV.API_URL,
-    apiAccessToken: ENV.API_ACCESS_TOKEN,
-    ukdScheduleApiUrl: ENV.UKD_SCHEDULE_API_URL,
+    apiRefreshToken: ENV.API_REFRESH_TOKEN,
     decanatPlusPlusUrl: ENV.DECANAT_PLUS_PLUS_URL,
+    googleClientId: ENV.GOOGLE_CLIENT_ID,
+    googleClientSecret: ENV.GOOGLE_CLIENT_SECRET,
+    googleClientRefreshToken: ENV.GOOGLE_CLIENT_REFRESH_TOKEN,
+    apiAccessToken: '',
   } as const;
 }
