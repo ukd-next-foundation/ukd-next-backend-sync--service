@@ -1,10 +1,12 @@
 import { HttpService } from '@nestjs/axios';
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { errorInterceptor } from '@sync-ukd-service/common/interceptors';
 import * as jwt from 'jsonwebtoken';
-import { updateGoogleAccessTokenType } from './types/update-google-access-token.type';
-import { GlobalConfig, GlobalConfigType } from '../configs';
+
 import { sleep } from '@sync-ukd-service/common/functions';
+import { errorInterceptor } from '@sync-ukd-service/common/interceptors';
+
+import { GlobalConfig, GlobalConfigType } from '../configs';
+import { updateGoogleAccessTokenType } from './types/update-google-access-token.type';
 
 @Injectable()
 export class ServiceAccountService implements OnModuleInit {

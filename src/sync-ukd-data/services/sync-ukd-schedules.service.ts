@@ -1,19 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { UsersService } from '@sync-ukd-service/src/main-backend-modules/users/users.service';
+import { GroupModel } from '@prisma/client';
+
+import { CreateScheduleDto } from '@app/src/api/schedules/dto/create-schedule.dto';
 import { ScheduleType, UserRole } from '@app/src/common/enums';
-import { LessonsService } from '@sync-ukd-service/src/main-backend-modules/lessons/lessons.service';
-import { ClassroomsService } from '@sync-ukd-service/src/main-backend-modules/classrooms/classrooms.service';
-import { SchedulesService } from '@sync-ukd-service/src/main-backend-modules/schedules/schedules.service';
-import { GroupsService } from '@sync-ukd-service/src/main-backend-modules/groups/groups.service';
-import { GroupEntity } from '@app/src/core/groups/entities/group.entity';
+
+import { deleteArrayDuplicates, getFindFunction, twoParallelProcesses } from '@sync-ukd-service/common/functions';
+import { chunkArray } from '@sync-ukd-service/common/functions/chunk-array.function';
 import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
 import { IRozkladItem } from '@sync-ukd-service/src/decanat-plus-plus/interfaces';
-import { deleteArrayDuplicates, getFindFunction, twoParallelProcesses } from '@sync-ukd-service/common/functions';
-import { SyncUkdTeachersService } from './sync-ukd-teachers.service';
-import { CreateScheduleDto } from '@app/src/core/schedules/dto/create-schedule.dto';
-import { chunkArray } from '@sync-ukd-service/common/functions/chunk-array.function';
-import { scheduleNextActionsType } from '../types/schedule-next-actions.type';
+import { ClassroomsService } from '@sync-ukd-service/src/main-backend-modules/classrooms/classrooms.service';
+import { GroupsService } from '@sync-ukd-service/src/main-backend-modules/groups/groups.service';
+import { LessonsService } from '@sync-ukd-service/src/main-backend-modules/lessons/lessons.service';
+import { SchedulesService } from '@sync-ukd-service/src/main-backend-modules/schedules/schedules.service';
+import { UsersService } from '@sync-ukd-service/src/main-backend-modules/users/users.service';
+
 import { SharedDataType } from '../types';
+import { scheduleNextActionsType } from '../types/schedule-next-actions.type';
+import { SyncUkdTeachersService } from './sync-ukd-teachers.service';
 
 @Injectable()
 export class SyncUkdSchedulesService {
@@ -52,13 +55,14 @@ export class SyncUkdSchedulesService {
       newSchedule: [],
       scheduleTo: to,
       classrooms,
+      // @ts-ignore
       schedules,
       teachers,
       lessons,
       groups,
     };
 
-    await twoParallelProcesses<[IRozkladItem[], GroupEntity]>(
+    await twoParallelProcesses<[IRozkladItem[], GroupModel]>(
       (pushFn) => this.processOfDataCollection(sharedData, pushFn),
       (item) => this.processOfHandlingData(sharedData, item),
     );
@@ -68,7 +72,7 @@ export class SyncUkdSchedulesService {
     await Promise.all([
       (async () => {
         for (const createChunk of chunkArray(actions.create, 2_000)) {
-          await this.schedulesService.create(createChunk);
+          await this.schedulesService.createMany(createChunk);
         }
       })(),
       (async () => {
@@ -78,6 +82,7 @@ export class SyncUkdSchedulesService {
       })(),
       (async () => {
         for (const deleteChunk of chunkArray(actions.delete, 10_000)) {
+          // @ts-ignore
           await this.schedulesService.removeMany(deleteChunk);
         }
       })(),
@@ -97,7 +102,9 @@ export class SyncUkdSchedulesService {
     const actions: scheduleNextActionsType = { create: [], update: [], foundIds: new Set(), delete: [] };
 
     sharedData.groups.forEach((group) => {
+      // @ts-ignore
       const newSchedule = sharedData.newSchedule.filter(({ groupIds }) => groupIds.includes(group.id));
+      // @ts-ignore
       const oldSchedule = sharedData.schedules.filter(({ groups }) => groups.some(({ id }) => id === group.id));
 
       newSchedule.forEach((newItem) => {
@@ -110,6 +117,7 @@ export class SyncUkdSchedulesService {
         );
 
         if (foundItem) {
+          // @ts-ignore
           actions.foundIds.add(foundItem.id);
 
           const updateObj = {};
@@ -131,6 +139,7 @@ export class SyncUkdSchedulesService {
     actions.create = deleteArrayDuplicates(actions.create);
     actions.update = deleteArrayDuplicates(actions.update);
     actions.delete = deleteArrayDuplicates(
+      // @ts-ignore
       sharedData.schedules.filter(({ id }) => !actions.foundIds.has(id)).map(({ id }) => id),
     );
 
@@ -139,7 +148,7 @@ export class SyncUkdSchedulesService {
 
   private async processOfDataCollection(
     sharedData: SharedDataType,
-    push: (item: [IRozkladItem[], GroupEntity]) => number,
+    push: (item: [IRozkladItem[], GroupModel]) => number,
   ) {
     for (const currentGroup of sharedData.groups) {
       try {
@@ -159,7 +168,7 @@ export class SyncUkdSchedulesService {
     }
   }
 
-  private async processOfHandlingData(sharedData: SharedDataType, item: [IRozkladItem[], GroupEntity]) {
+  private async processOfHandlingData(sharedData: SharedDataType, item: [IRozkladItem[], GroupModel]) {
     const [items, currentGroup] = item;
     const result: CreateScheduleDto[] = [];
 
@@ -173,13 +182,16 @@ export class SyncUkdSchedulesService {
 
         result.push({
           isCanceled: this.parseReplacement(item.replacement).isCanceled,
+          // @ts-ignore
           startAt: item.lesson_time.split('-')[0] + ':00',
+          // @ts-ignore
           endAt: item.lesson_time.split('-')[1] + ':00',
           type: this.getTypeForSchedule(item.type),
           classroomId: classroom?.id ?? null,
           teacherId: teacher?.id ?? null,
           lessonId: lesson?.id ?? null,
           groupIds: [currentGroup.id],
+          // @ts-ignore
           date: item.date,
         });
       } catch (error) {
@@ -204,7 +216,11 @@ export class SyncUkdSchedulesService {
 
     this.logger.warn(`Lesson not found for ${JSON.stringify(item)}`);
 
-    const newLesson = await this.lessonsService.create({ name: item.title, departmentId: null });
+    const newLesson = await this.lessonsService.create({
+      name: item.title,
+      departmentId: null,
+      classroomRequirements: {},
+    });
 
     sharedData.lessons.push(newLesson);
     sharedData.findLessonFn = getFindFunction(sharedData.lessons.map(({ name }) => name));
@@ -236,6 +252,7 @@ export class SyncUkdSchedulesService {
       this.logger.warn(`Teacher not found for ${JSON.stringify(item)}`);
 
       const newTeacherTemplate = this.syncUkdTeachersService.createEmptyTeacher(item.teacher);
+      // @ts-ignore
       const newTeacher = await this.usersService.create([newTeacherTemplate]).then((arr) => arr.pop());
 
       sharedData.teachers.push(newTeacher);
@@ -270,6 +287,7 @@ export class SyncUkdSchedulesService {
 
       this.logger.warn(`Classroom not found for ${JSON.stringify(item)}`);
 
+      // @ts-ignore
       const newClassroom = await this.classroomsService.create({ name: item.room, numberOfSeats: 0 });
 
       sharedData.classrooms.push(newClassroom);
@@ -286,6 +304,7 @@ export class SyncUkdSchedulesService {
 
       this.logger.warn(`Online classroom not found for ${JSON.stringify(item)}`);
 
+      // @ts-ignore
       const newOnlineClassroom = await this.classroomsService.create({
         name: item.link.split('/')[2],
         numberOfSeats: 0,
@@ -337,6 +356,7 @@ export class SyncUkdSchedulesService {
   private mergeGroups(schedule: CreateScheduleDto[]): CreateScheduleDto[] {
     const map = new Map<string, number[]>();
 
+    // @ts-ignore
     schedule.forEach(({ groupIds, ...anyFields }) => {
       const payload = JSON.stringify(anyFields);
       const array = map.get(payload) ?? [];

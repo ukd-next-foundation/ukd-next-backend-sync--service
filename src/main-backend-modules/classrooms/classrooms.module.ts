@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
-import { ClassroomsService } from './classrooms.service';
-import { GlobalConfig, GlobalConfigType } from '@sync-ukd-service/src/configs';
 import { HttpModule } from '@nestjs/axios';
+import { Module } from '@nestjs/common';
+
+import { GlobalConfig, GlobalConfigType } from '@sync-ukd-service/src/configs';
+
+import { ClassroomsService } from './classrooms.service';
 
 @Module({
   imports: [

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+
 import { findMissingValues } from '@sync-ukd-service/common/functions';
 import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
 import { GroupsService } from '@sync-ukd-service/src/main-backend-modules/groups/groups.service';
@@ -35,6 +36,6 @@ export class SyncUkdGroupsService {
 
     const missingGroups = findMissingValues(externalGroups, internalGroups);
 
-    return this.groupsService.create(missingGroups.map((name) => ({ name })));
+    return this.groupsService.createMany(missingGroups.map((name) => ({ name }) as any));
   }
 }

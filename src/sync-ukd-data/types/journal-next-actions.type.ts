@@ -1,4 +1,5 @@
-import { CreateJournalDto } from '@app/src/core/journals/dto/create-journal.dto';
-import { JournalEntity } from '@app/src/core/journals/entities/journal.entity';
+import { JournalModel } from '@prisma/client';
 
-export type journalNextActionsType = { create: CreateJournalDto[]; update: JournalEntity[]; delete: JournalEntity[] };
+import { CreateJournalDto } from '@app/src/api/journals/dto/create-journal.dto';
+
+export type journalNextActionsType = { create: CreateJournalDto[]; update: JournalModel[]; delete: JournalModel[] };

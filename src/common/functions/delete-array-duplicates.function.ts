@@ -1,7 +1,7 @@
 function isJSON(value: string): boolean {
   try {
     return JSON.parse(value) && !!value;
-  } catch (_) {
+  } catch {
     return false;
   }
 }

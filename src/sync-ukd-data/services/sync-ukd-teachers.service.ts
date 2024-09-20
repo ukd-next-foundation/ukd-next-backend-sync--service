@@ -1,6 +1,9 @@
-import { AuthProvider, UserRole } from '@app/src/common/enums';
-import { UserEntity } from '@app/src/core/users/entities/user.entity';
 import { Injectable, Logger } from '@nestjs/common';
+import { UserModel } from '@prisma/client';
+import { randomBytes } from 'node:crypto';
+
+import { AuthProvider, UserRole } from '@app/src/common/enums';
+
 import { getFindFunction, replaceCyrillicWithLatin } from '@sync-ukd-service/common/functions';
 import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
 import { UsersService } from '@sync-ukd-service/src/main-backend-modules/users/users.service';
@@ -27,7 +30,7 @@ export class SyncUkdTeachersService {
     );
   }
 
-  private async process(): Promise<{ created: UserEntity[]; updated: UserEntity[] }> {
+  private async process(): Promise<{ created: UserModel[]; updated: UserModel[] }> {
     const [teachers, users] = await Promise.all([
       this.decanatPlusPlusService.getTeachers(),
       this.usersService.findAll(),
@@ -54,12 +57,12 @@ export class SyncUkdTeachersService {
           if (index !== -1) newRoles.splice(index, 1);
         }
 
-        await this.usersService.update(user.id, { roles: newRoles });
+        await this.usersService.update({ id: user.id, roles: newRoles });
         actions.updated.push({ ...user, roles: newRoles });
       }
     }
 
-    actions.created = await this.usersService.create(actions.plannedNewTeacher);
+    actions.created = await this.usersService.createMany(actions.plannedNewTeacher);
     delete actions.plannedNewTeacher;
 
     return actions;
@@ -67,7 +70,7 @@ export class SyncUkdTeachersService {
 
   createEmptyTeacher(fullname: string) {
     return {
-      email: `${replaceCyrillicWithLatin(fullname).replaceAll(' ', '.')}@ukd.edu.ua`,
+      email: `null_${randomBytes(10).toString('hex')}@ukd.edu.ua`,
       authProvider: AuthProvider.Internal,
       fullname: fullname,
       roles: [UserRole.Teacher],

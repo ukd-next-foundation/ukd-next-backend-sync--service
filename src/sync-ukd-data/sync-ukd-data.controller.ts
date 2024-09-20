@@ -1,12 +1,11 @@
 import { Injectable, OnApplicationBootstrap } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
+
+import { SyncUkdClassroomsService } from './services/sync-ukd-classrooms.service';
 import { SyncUkdGroupsService } from './services/sync-ukd-groups.service';
 import { SyncUkdJournalsService } from './services/sync-ukd-journals.service';
 import { SyncUkdSchedulesService } from './services/sync-ukd-schedules.service';
 import { SyncUkdTeachersService } from './services/sync-ukd-teachers.service';
-import { SyncUkdClassroomsService } from './services/sync-ukd-classrooms.service';
-import { DecanatPlusPlusService } from '../decanat-plus-plus/decanat-plus-plus.service';
-import { GroupsService } from '../main-backend-modules/groups/groups.service';
-import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class SyncUkdDataController implements OnApplicationBootstrap {
@@ -19,8 +18,7 @@ export class SyncUkdDataController implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap() {
-    await this.syncUkdTeachersService.sync();
-    await this.syncUkdGroupsService.sync();
+    await this.syncOtherData();
   }
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -45,12 +43,9 @@ export class SyncUkdDataController implements OnApplicationBootstrap {
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_7PM)
-  async syncGroups() {
+  async syncOtherData() {
     await this.syncUkdGroupsService.sync();
-  }
-
-  @Cron(CronExpression.EVERY_DAY_AT_7PM)
-  async syncClassrooms() {
+    await this.syncUkdTeachersService.sync();
     await this.syncUkdClassroomsService.sync();
   }
 }

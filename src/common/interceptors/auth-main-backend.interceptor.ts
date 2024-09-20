@@ -1,4 +1,5 @@
 import { ServiceAccountService } from '@sync-ukd-service/src/service-account/service-account.service';
+
 import { AxiosInterceptors } from '../types';
 
 export function authMainBackendInterceptor(interceptors: AxiosInterceptors) {

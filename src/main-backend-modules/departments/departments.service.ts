@@ -1,45 +1,49 @@
-import { DepartmentsController } from '@app/src/core/departments/departments.controller';
-import { CreateDepartmentDto } from '@app/src/core/departments/dto/create-department.dto';
-import { UpdateDepartmentDto } from '@app/src/core/departments/dto/update-department.dto';
-import { DepartmentEntity } from '@app/src/core/departments/entities/department.entity';
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
+
+import { DepartmentsController } from '@app/src/api/departments/departments.controller';
+import { CreateDepartmentDto } from '@app/src/api/departments/dto/create-department.dto';
+import { UpdateDepartmentDto } from '@app/src/api/departments/dto/update-department.dto';
+
 import { authMainBackendInterceptor, errorInterceptor } from '@sync-ukd-service/common/interceptors';
 
 @Injectable()
-export class DepartmentsService extends DepartmentsController {
+export class DepartmentsService implements DepartmentsController {
   private readonly logger = new Logger(DepartmentsService.name);
   private readonly axios = this.httpService.axiosRef;
 
   constructor(private readonly httpService: HttpService) {
-    // @ts-ignore
-    super();
     authMainBackendInterceptor(this.axios.interceptors);
     errorInterceptor(this.axios.interceptors, this.logger);
   }
 
-  async create(payload: CreateDepartmentDto[]) {
-    const request = await this.axios.post<DepartmentEntity[]>('', payload);
-    return request.data;
+  // @ts-ignore
+  async createMany(payload: CreateDepartmentDto[]) {
+    const request = await this.axios.post('/many', payload);
+    return request.data as ReturnType<DepartmentsController['createMany']>;
   }
 
+  // @ts-ignore
   async findAll() {
-    const request = await this.axios.get<DepartmentEntity[]>('');
-    return request.data;
+    const request = await this.axios.get('');
+    return request.data as ReturnType<DepartmentsController['findAll']>;
   }
 
-  async findOne(id: number) {
-    const request = await this.axios.get<DepartmentEntity>(`/${id}`);
-    return request.data;
+  // @ts-ignore
+  async findOne(id: string) {
+    const request = await this.axios.get(`/${id}`);
+    return request.data as ReturnType<DepartmentsController['findOne']>;
   }
 
-  async update(id: number, payload: Partial<UpdateDepartmentDto>) {
-    const request = await this.axios.patch(`/${id}`, payload);
-    return request.data;
+  // @ts-ignore
+  async update(payload: UpdateDepartmentDto) {
+    const request = await this.axios.patch('', payload);
+    return request.data as ReturnType<DepartmentsController['update']>;
   }
 
-  async remove(id: number) {
+  // @ts-ignore
+  async remove(id: string) {
     const request = await this.axios.delete(`/${id}`);
-    return request.data;
+    return request.data as ReturnType<DepartmentsController['remove']>;
   }
 }
