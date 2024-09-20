@@ -14,6 +14,7 @@
     "incremental": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
+    "strict": false,
     "strictNullChecks": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,
@@ -23,7 +24,7 @@
       "@sync-ukd-service/common/*": ["src/common/*"],
       "@sync-ukd-service/src/*": ["src/*"],
       "@app/src/*": ["ukd-next--backend/src/*"],
-      "@app/core/*": ["ukd-next--backend/src/core/*"],
+      "@app/api/*": ["ukd-next--backend/src/api/*"],
       "@app/common/*": ["ukd-next--backend/src/common/*"]
       
     }

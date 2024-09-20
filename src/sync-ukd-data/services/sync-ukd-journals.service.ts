@@ -1,14 +1,17 @@
-import crypto from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
-import { JournalsService } from '@sync-ukd-service/src/main-backend-modules/journals/journals.service';
-import { CreateJournalDto } from '@app/src/core/journals/dto/create-journal.dto';
-import { UsersService } from '@sync-ukd-service/src/main-backend-modules/users/users.service';
-import { SchedulesService } from '@sync-ukd-service/src/main-backend-modules/schedules/schedules.service';
-import { LessonsService } from '@sync-ukd-service/src/main-backend-modules/lessons/lessons.service';
+import { JournalModel } from '@prisma/client';
+import crypto from 'node:crypto';
+
+import { CreateJournalDto } from '@app/src/api/journals/dto/create-journal.dto';
+
 import { getFindFunction, twoParallelProcesses } from '@sync-ukd-service/common/functions';
 import { GoogleSheetsService } from '@sync-ukd-service/src/google-sheets/google-sheets.service';
 import { GroupsService } from '@sync-ukd-service/src/main-backend-modules/groups/groups.service';
-import { JournalEntity } from '@app/src/core/journals/entities/journal.entity';
+import { JournalsService } from '@sync-ukd-service/src/main-backend-modules/journals/journals.service';
+import { LessonsService } from '@sync-ukd-service/src/main-backend-modules/lessons/lessons.service';
+import { SchedulesService } from '@sync-ukd-service/src/main-backend-modules/schedules/schedules.service';
+import { UsersService } from '@sync-ukd-service/src/main-backend-modules/users/users.service';
+
 import { IJournal, IJournalSharedData, IStudentScore } from '../interfaces';
 import { journalNextActionsType } from '../types';
 
@@ -28,17 +31,18 @@ export class SyncUkdJournalsService {
   async sync() {
     const serviceAccount = await this.usersService.findMe();
     const [journals, schedules, lessons, groups, users] = await Promise.all([
-      this.journalsService.findAll({ teacherId: serviceAccount.id, onlyIds: true }),
+      this.journalsService.findAll({ teacherId: serviceAccount.id, onlyIds: true } as any),
       this.schedulesService.findAll(),
       this.lessonsService.findAll(),
       this.groupsService.findAll(),
       this.usersService.findAll(),
     ]);
 
-    const sharedData = {
+    const sharedData: IJournalSharedData = {
       findLessonFn: getFindFunction(lessons.map((lesson) => lesson.name)),
       findUserFn: getFindFunction(users.map((user) => user.fullname)),
       serviceAccount,
+      // @ts-ignore
       schedules,
       journals,
       lessons,
@@ -76,12 +80,13 @@ export class SyncUkdJournalsService {
     this.logger.log(`Start of parse journal '${journal.group.name}'`);
 
     const newScores = await this.parseRawSheets(sharedData, journal);
-    const actions = this.getNextActionsFromDataDifference(sharedData.journals, newScores);
+    const actions = this.getNextActionsFromDataDifference(sharedData.journals as any, newScores as any);
 
-    await this.journalsService.create(actions.create);
+    await this.journalsService.createMany(actions.create);
+    // @ts-ignore
     await this.journalsService.updateMany(actions.update.map(({ id, type, date }) => ({ id, type, date })));
     await this.journalsService.removeMany(actions.delete.map(({ id }) => id));
-    await this.groupsService.update(journal.group.id, { checksumOfJournalContent: journal.checksum });
+    await this.groupsService.update({ id: journal.group.id, checksumOfJournalContent: journal.checksum });
 
     this.logger.log(
       `Successfully parse journal '${journal.group.name}' and created: ${actions.create.length}, updated: ${actions.update.length}, deleted: ${actions.delete.length} scores.`,
@@ -126,8 +131,10 @@ export class SyncUkdJournalsService {
 
           const schedule = sharedData.schedules.filter(
             (schedule) =>
+              // @ts-ignore
               schedule.groups.some((groups) => groups.name === journal.group.name) &&
               (schedule.date as unknown as string) === dateStr &&
+              // @ts-ignore
               schedule.lesson.id === lessonId,
           );
 
@@ -137,7 +144,7 @@ export class SyncUkdJournalsService {
             lessonId: lessonId,
             studentId: studentId,
             teacherId: sharedData.serviceAccount.id,
-            type: schedule.length ? schedule[0].type : null,
+            type: schedule.length ? schedule[0].type : (null as any),
           });
         }
       }
@@ -162,7 +169,7 @@ export class SyncUkdJournalsService {
       if (!student) continue;
 
       for (const [valIndex, value] of Object.entries(row)) {
-        if (value) {
+        if (value.trim()) {
           scores.push({ topic: topics[valIndex], date: dates[valIndex], value });
         }
       }
@@ -191,8 +198,8 @@ export class SyncUkdJournalsService {
     return this.sliceTable(table, fromColumn, fromColumn + headerLength, fromRow);
   }
 
-  private getNextActionsFromDataDifference(rawPrewScores: CreateJournalDto[], rawNewScores: JournalEntity[]) {
-    const newScoresMap = this.dataPreparation(rawNewScores);
+  private getNextActionsFromDataDifference(rawPrewScores: CreateJournalDto[], rawNewScores: JournalModel[]) {
+    const newScoresMap = this.dataPreparation(rawNewScores as any);
     const prewScoresMap = this.dataPreparation(rawPrewScores);
     const actions: journalNextActionsType = { create: [], update: [], delete: [] };
 
@@ -205,6 +212,7 @@ export class SyncUkdJournalsService {
       }
 
       if (newScores.length < prewScores.length) {
+        // @ts-ignore
         actions.delete.push(...prewScores.slice(newScores.length));
       }
 
@@ -220,6 +228,7 @@ export class SyncUkdJournalsService {
 
         if (newScore.mark !== prewScore.mark) {
           actions.create.push(newScore);
+          // @ts-ignore
           actions.delete.push(prewScore);
           continue;
         }
@@ -233,6 +242,7 @@ export class SyncUkdJournalsService {
         }
 
         if (Object.keys(updateObj).length) {
+          // @ts-ignore
           actions.update.push({ ...prewScore, ...updateObj });
         }
       }
@@ -246,6 +256,7 @@ export class SyncUkdJournalsService {
 
     scores.forEach((score) => {
       const key = score.lessonId + '|' + score.studentId;
+      // @ts-ignore
       map.has(key) ? map.get(key).push(score) : map.set(key, [score]);
     });
 
@@ -259,7 +270,7 @@ export class SyncUkdJournalsService {
   }
 
   private async createAndUpdateLessons(sharedData: IJournalSharedData, newLessonName: string) {
-    const newLesson = await this.lessonsService.create({ name: newLessonName });
+    const newLesson = await this.lessonsService.create({ name: newLessonName } as any);
     sharedData.lessons.push(newLesson);
     sharedData.findLessonFn = getFindFunction(sharedData.lessons.map((lesson) => lesson.name));
 

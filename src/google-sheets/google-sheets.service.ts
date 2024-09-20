@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { google } from 'googleapis';
-import { ServiceAccountService } from '../service-account/service-account.service';
+
 import { Timer } from '@app/src/common/functions/timer';
+
 import { sleep } from '@sync-ukd-service/common/functions';
+
+import { ServiceAccountService } from '../service-account/service-account.service';
 
 @Injectable()
 export class GoogleSheetsService {

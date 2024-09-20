@@ -1,6 +1,10 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+
+import { errorInterceptor } from '@sync-ukd-service/common/interceptors';
 import { ConvertWin1254 } from '@sync-ukd-service/common/utils';
+
+import { GlobalConfig, GlobalConfigType } from '../configs';
 import { IClassroomType, IRozkladItem } from './interfaces';
 import {
   ExportClassroomTypesType,
@@ -9,21 +13,25 @@ import {
   ExportRozkladType,
   ExportTeachersType,
 } from './types';
-import { errorInterceptor } from '@sync-ukd-service/common/interceptors';
 
 @Injectable()
 export class DecanatPlusPlusService {
   private readonly logger = new Logger(DecanatPlusPlusService.name);
+  private readonly url = this.config.decanatPlusPlusUrl;
   private readonly axios = this.httpService.axiosRef;
 
-  constructor(private readonly httpService: HttpService) {
+  constructor(
+    @Inject(GlobalConfig)
+    private readonly config: GlobalConfigType,
+    private readonly httpService: HttpService,
+  ) {
     errorInterceptor(this.axios.interceptors, this.logger);
   }
 
   async getGroups(): Promise<string[]> {
     const params = { req_type: 'obj_list', req_mode: 'group' };
-    const response = await this.axios.get<ExportGroupsType>('/timetable_export.cgi', { params });
 
+    const response = await this.axios.get<ExportGroupsType>(this.url, { params });
     return response.data.psrozklad_export.departments
       .map((d) => d.objects)
       .flat()
@@ -32,7 +40,7 @@ export class DecanatPlusPlusService {
 
   async getTeachers() {
     const params = { req_type: 'obj_list', req_mode: 'teacher' };
-    const response = await this.axios.get<ExportTeachersType>('/timetable_export.cgi', { params });
+    const response = await this.axios.get<ExportTeachersType>(this.url, { params });
 
     return response.data.psrozklad_export.departments
       .map((departmen) => {
@@ -48,7 +56,7 @@ export class DecanatPlusPlusService {
 
   async getClassrooms(): Promise<string[]> {
     const params = { req_type: 'obj_list', req_mode: 'room' };
-    const response = await this.axios.get<ExportClassroomsType>('/timetable_export.cgi', { params });
+    const response = await this.axios.get<ExportClassroomsType>(this.url, { params });
 
     return response.data.psrozklad_export.blocks
       .map((d) => d.objects)
@@ -58,7 +66,7 @@ export class DecanatPlusPlusService {
 
   async getClassroomsTypes(): Promise<IClassroomType[]> {
     const params = { req_type: 'room_type_list', req_mode: 'room' };
-    const response = await this.axios.get<ExportClassroomTypesType>('/timetable_export.cgi', {
+    const response = await this.axios.get<ExportClassroomTypesType>(this.url, {
       params,
     });
     return response.data.psrozklad_export.objects;
@@ -79,10 +87,14 @@ export class DecanatPlusPlusService {
       .map((key) => `${key}=${params[key]}`)
       .join('&');
 
-    const response = await this.axios.get<string>(`/timetable_export.cgi?${strParams}`);
+    const response = await this.axios.get<string>(`${this.url}?${strParams}`);
     const data: ExportRozkladType = JSON.parse(
       JSON.stringify(response.data).replaceAll('} {', '}, {').replaceAll('`', '’'),
     );
+
+    if (data.psrozklad_export.code !== '0') {
+      throw new Error(JSON.stringify(data.psrozklad_export['error']));
+    }
 
     const result = data.psrozklad_export.roz_items.map((item) => ({
       ...item,

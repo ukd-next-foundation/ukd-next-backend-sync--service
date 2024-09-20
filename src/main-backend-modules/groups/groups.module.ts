@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
-import { GroupsService } from './groups.service';
 import { HttpModule } from '@nestjs/axios';
+import { Module } from '@nestjs/common';
+
 import { GlobalConfig, GlobalConfigType } from '@sync-ukd-service/src/configs';
+
+import { GroupsService } from './groups.service';
 
 @Module({
   imports: [

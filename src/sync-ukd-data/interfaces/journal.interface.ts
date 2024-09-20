@@ -1,8 +1,8 @@
-import { GroupEntity } from '@app/src/core/groups/entities/group.entity';
+import { GroupModel } from '@prisma/client';
 import { sheets_v4 } from 'googleapis';
 
 export interface IJournal {
-  group: GroupEntity;
+  group: GroupModel;
   table: sheets_v4.Schema$BatchGetValuesResponse;
   checksum: string;
 }

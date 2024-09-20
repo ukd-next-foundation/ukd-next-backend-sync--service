@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+
 import { findMissingValues } from '@sync-ukd-service/common/functions';
-import { ClassroomsService } from '@sync-ukd-service/src/main-backend-modules/classrooms/classrooms.service';
 import { DecanatPlusPlusService } from '@sync-ukd-service/src/decanat-plus-plus/decanat-plus-plus.service';
+import { ClassroomsService } from '@sync-ukd-service/src/main-backend-modules/classrooms/classrooms.service';
 
 @Injectable()
 export class SyncUkdClassroomsService {
@@ -41,7 +42,7 @@ export class SyncUkdClassroomsService {
         await this.classroomsService.create({
           name: missingClassroom,
           numberOfSeats: 0,
-        }),
+        } as any),
       );
     }
 
